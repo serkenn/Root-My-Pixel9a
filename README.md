@@ -2,6 +2,8 @@
 
 **Root My Pixel** is an Android application designed to automate root access on **Google Pixel** devices leveraging the **NebuSec IonStack** exploit (CVE-2026-43499) and integrating **ReSukiSU / KernelSU**.
 
+日本語のマニュアルは [README-ja.md](README-ja.md) を参照してください。
+
 ---
 
 ## How the Application Works
@@ -42,6 +44,14 @@ Root My Pixel lets you *temporarily* gain root access with ReSukiSU in just one 
 | **Pixel 10 Pro XL**   | `mustang`  | `CP2A.260705.006` | `android15-6.6` | ✅      |
 | **Pixel 10 Pro Fold** | `rango`    | `CP2A.260705.006` | `android15-6.6` | ✅      |
 | **Pixel 10a**         | `stallion` | `CP2A.260705.006` | `android15-6.6` | ⏳      |
+| **Pixel 9a**          | `tegu`     | `CP2A.260705.006` | `android14-6.1` | ⏳      |
+
+`tegu` is the only `android14-6.1` target; the rest are `android15-6.6`. Struct
+layouts are not shared across those kernel lines, so none of its offsets are
+inherited — symbol addresses come from the factory image's `kallsyms`, struct
+member offsets from the kernel's own BTF blob. It has never been run on
+hardware, and `assets/ksud/ksud-android14-6.1` still has to be supplied from a
+ReSukiSU release before it can work end to end.
 
 ---
 

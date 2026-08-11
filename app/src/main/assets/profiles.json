@@ -23,6 +23,14 @@
       "buildDisplay": "CP2A.260705.006",
       "exploitAsset": "exploits/blazer-CP2A.260705.006.so",
       "kmi": "android15-6.6"
+    },
+    {
+      "profileId": "tegu-CP2A.260705.006",
+      "codename": "tegu",
+      "kernelRelease": "6.1.157-android14-11",
+      "buildDisplay": "CP2A.260705.006",
+      "exploitAsset": "exploits/tegu-CP2A.260705.006.so",
+      "kmi": "android14-6.1"
     }
   ]
 }
