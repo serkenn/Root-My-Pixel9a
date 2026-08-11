@@ -49,9 +49,9 @@ Root My Pixel lets you *temporarily* gain root access with ReSukiSU in just one 
 `tegu` is the only `android14-6.1` target; the rest are `android15-6.6`. Struct
 layouts are not shared across those kernel lines, so none of its offsets are
 inherited — symbol addresses come from the factory image's `kallsyms`, struct
-member offsets from the kernel's own BTF blob. It has never been run on
-hardware, and `assets/ksud/ksud-android14-6.1` still has to be supplied from a
-ReSukiSU release before it can work end to end.
+member offsets from the kernel's own BTF blob. Device detection and payload
+extraction are confirmed on a physical Pixel 9a; the exploit itself has not been
+run to completion.
 
 ---
 
