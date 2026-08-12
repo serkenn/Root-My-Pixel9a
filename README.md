@@ -49,9 +49,19 @@ Root My Pixel lets you *temporarily* gain root access with ReSukiSU in just one 
 `tegu` is the only `android14-6.1` target; the rest are `android15-6.6`. Struct
 layouts are not shared across those kernel lines, so none of its offsets are
 inherited — symbol addresses come from the factory image's `kallsyms`, struct
-member offsets from the kernel's own BTF blob. Device detection and payload
-extraction are confirmed on a physical Pixel 9a; the exploit itself has not been
-run to completion.
+member offsets from the kernel's own BTF blob.
+
+On a physical Pixel 9a the exploit now gets as far as defeating KASLR: the
+KernelSnitch `mm_struct` leak, the page reclaim, the `pselect` waiter
+corruption and the slide route all succeed, and the run reports
+`slide-kaslr-ok` with a recovered kernel base. The main FOPS route that
+follows still fails — the `ashmem` `f_op` overwrite does not land, so every
+`try_cfi_stage()` attempt exits at step 4 and no root is obtained. Two
+tegu-only constants had to be measured on the device rather than derived to
+get this far, both recorded in `target.h`: the `mm_struct` SLUB object size
+(`/proc/slabinfo` is world-readable on this build) and the ordering that
+unfreezes the target slab off the per-CPU partial list before the reclaim
+sends.
 
 ---
 

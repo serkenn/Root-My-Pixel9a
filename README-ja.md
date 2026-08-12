@@ -179,9 +179,24 @@ Pixel 9a は、このリポジトリで唯一 **android14-6.1** 系のターゲ�
 | `slide.c` の変更が既存 3 機種で完全に等価 | ✅ |
 | 実機 Pixel 9a での端末判定（プロファイル照合） | ✅ |
 | 実機でのペイロード展開 | ✅ |
-| **エクスプロイト本体の実行 / root 取得** | ❌ **未検証** |
+| 実機での KernelSnitch `mm_struct` リーク | ✅ |
+| 実機での `pselect` waiter 破壊 / slide ルート | ✅ |
+| 実機での KASLR ベース奪取（`slide-kaslr-ok`） | ✅ |
+| **メイン FOPS ルート / root 取得** | ❌ **未達** |
 
-最後の 1 行が本質的です。すべての値に出典があることと、動作することは別です。実機で試す場合は、冒頭の警告を読み直してください。
+KASLR の突破までは実機で確認済みですが、その先のメイン FOPS ルートで
+`ashmem` の `f_op` 上書きが載らず、`try_cfi_stage()` が毎回 step 4 で抜けます。
+root は取れていません。
+
+ここまで到達するのに、導出ではなく**実機計測**が必要だった tegu 固有の値が 2 つあり、
+いずれも `target.h` に根拠付きで記録しています。
+
+1. `mm_struct` の SLUB オブジェクトサイズ。`sizeof(struct mm_struct)` は BTF で 960 ですが、
+   `proc_caches_init()` が `+ cpumask_size()` してから `SLAB_HWCACHE_ALIGN` するため実際は
+   **1024** です。このビルドは `/proc/slabinfo` が誰でも読めるので実測できます。
+2. リクレイム前に対象スラブを per-CPU partial リストから unfreeze させる解放順序。
+   `CONFIG_SLUB_CPU_PARTIAL` が有効なため、frozen のまま空になったスラブは
+   ページアロケータに戻らず、次の `mm_struct` として再利用されてしまいます。
 
 ---
 
