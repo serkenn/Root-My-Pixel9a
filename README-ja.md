@@ -16,7 +16,10 @@
 | Pixel 10 Pro | `blazer` | `CP2A.260705.006` | `android15-6.6` | ✅ 済 |
 | Pixel 10 Pro XL | `mustang` | `CP2A.260705.006` | `android15-6.6` | ✅ 済 |
 | Pixel 10 Pro Fold | `rango` | `CP2A.260705.006` | `android15-6.6` | ✅ 済 |
-| **Pixel 9a** | **`tegu`** | **`CP2A.260705.006`** | **`android14-6.1`** | ⏳ **未検証** |
+| Pixel 8 Pro | `husky` | `CP2A.260705.006` | `android14-6.1` | ✅ 済 |
+| Pixel 7 | `panther` | `CP2A.260705.006` | `android14-6.1` | ✅ 済 |
+| Pixel 7a | `lynx` | `CP2A.260705.006` | `android14-6.1` | ✅ 済 |
+| **Pixel 9a** | **`tegu`** | **`CP2A.260705.006`** | **`android14-6.1`** | ⏳ **未達** |
 
 ビルド番号は**完全一致**が必要です。`設定 → デバイス情報 → ビルド番号` で確認してください。異なるビルドでは、たとえ同じ機種でもオフセットが一致せず危険です。
 
@@ -135,7 +138,13 @@ vmlinux-to-elf /path/to/Image out.elf
 
 ## 6. Pixel 9a (tegu) 対応について
 
-Pixel 9a は、このリポジトリで唯一 **android14-6.1** 系のターゲットです（他はすべて android15-6.6）。そのため構造体オフセットを既存機種から流用できず、すべて独自に取得しています。
+Pixel 9a は **android14-6.1** 系のターゲットです。Pixel 10 系（android15-6.6）とは
+カーネル系列が異なり構造体レイアウトを共有しないため、ビルドするソースツリー自体が
+分かれています（6.6 は `src/`、6.1 は `src/61/`。振り分けは Makefile の
+`sixone-targets` が行います）。オフセットは既存機種から流用せず独自に取得しました。
+
+なお Pixel 7 / 7a / 8 Pro も同じ 6.1 系で、`src/61/` を共有します。tegu と lynx は
+カーネルが同一ビルド（`6.1.157-android14-11-gbd23337e42e7-ab14791245`）です。
 
 ### オフセットの出所
 
@@ -182,14 +191,26 @@ Pixel 9a は、このリポジトリで唯一 **android14-6.1** 系のターゲ�
 | 実機での KernelSnitch `mm_struct` リーク | ✅ |
 | 実機での `pselect` waiter 破壊 / slide ルート | ✅ |
 | 実機での KASLR ベース奪取（`slide-kaslr-ok`） | ✅ |
-| **メイン FOPS ルート / root 取得** | ❌ **未達** |
+| **メインルート / root 取得** | ❌ **未達** |
 
-KASLR の突破までは実機で確認済みですが、その先のメイン FOPS ルートで
-`ashmem` の `f_op` 上書きが載らず、`try_cfi_stage()` が毎回 step 4 で抜けます。
-root は取れていません。
+KASLR の突破までは実機で確認済みです。その先のメインルートは未達で、root は
+取れていません。
 
-ここまで到達するのに、導出ではなく**実機計測**が必要だった tegu 固有の値が 2 つあり、
-いずれも `target.h` に根拠付きで記録しています。
+当初は pselect メインルートを使っており、26 回の試行すべてで
+`calls=1 success=1`（レース自体は毎回発火）にもかかわらず `try_cfi_stage()` が
+step 4 で抜け、`ashmem` の `f_op` 上書きが一度も載りませんでした。レース中に
+取れたパニックは `rt_mutex_top_waiter()` で `lock->waiters.rb_leftmost` を読んで
+落ちています。
+
+上流の `src/61/common.h` はこの現象を「6.1 の pselect ルートにおける rb_leftmost
+ミスアライメント」として既に文書化しており、6.1 ターゲットは
+`MAIN_TCP_ROUTE_DEFAULT 1` で TCP ルートを使うよう指示しています。tegu もそれに
+合わせました（同一カーネルビルドの lynx で実績のある経路）。TCP ルートでの実機検証は
+これからです。
+
+ここまで到達するのに、導出ではなく**実機計測**が必要だった値が 2 つあり、
+いずれも根拠付きで記録しています。どちらも tegu 固有ではなく **android14-6.1 系
+全体**に効きます。
 
 1. `mm_struct` の SLUB オブジェクトサイズ。`sizeof(struct mm_struct)` は BTF で 960 ですが、
    `proc_caches_init()` が `+ cpumask_size()` してから `SLAB_HWCACHE_ALIGN` するため実際は
