@@ -88,12 +88,14 @@ class MainActivity : ComponentActivity() {
             val state by installViewModel.state.collectAsStateWithLifecycle()
             val shizukuAvailable by installViewModel.shizukuAvailable.collectAsStateWithLifecycle()
             val reSukiSuInstalled by installViewModel.reSukiSuInstalled.collectAsStateWithLifecycle()
+            val uptimeExceeded by installViewModel.uptimeExceeded.collectAsStateWithLifecycle()
 
             RootMyPixelTheme {
                 MainScreen(
                     state = state,
                     shizukuAvailable = shizukuAvailable,
                     reSukiSuInstalled = reSukiSuInstalled,
+                    uptimeExceeded = uptimeExceeded,
                     onRefresh = { installViewModel.refresh() },
                     onInstall = { installViewModel.install() },
                     onExportLog = { installViewModel.exportLog() },
@@ -172,6 +174,7 @@ private fun MainScreen(
     state: InstallUiState,
     shizukuAvailable: Boolean,
     reSukiSuInstalled: Boolean,
+    uptimeExceeded: Boolean,
     onRefresh: () -> Unit,
     onInstall: () -> Unit,
     onExportLog: () -> Unit,
@@ -242,6 +245,13 @@ private fun MainScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             Spacer(modifier = Modifier.height(12.dp))
+
+            // Uptime status
+            UptimeErrorCard(exceeded = uptimeExceeded)
+
+            if (uptimeExceeded) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // Shizuku status
             ShizukuStatusCard(available = shizukuAvailable)
@@ -350,6 +360,44 @@ private fun MainScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun UptimeErrorCard(exceeded: Boolean) {
+    if (!exceeded) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.Warning,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.uptime_error_title),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.uptime_error_message),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

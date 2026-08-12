@@ -31,6 +31,30 @@
       "buildDisplay": "CP2A.260705.006",
       "exploitAsset": "exploits/tegu-CP2A.260705.006.so",
       "kmi": "android14-6.1"
+    },
+    {
+      "profileId": "lynx-CP2A.260705.006",
+      "codename": "lynx",
+      "kernelRelease": "6.1.157-android14-11",
+      "buildDisplay": "CP2A.260705.006",
+      "exploitAsset": "exploits/lynx-CP2A.260705.006.so",
+      "kmi": "android14-6.1"
+    },
+    {
+      "profileId": "panther-CP2A.260705.006",
+      "codename": "panther",
+      "kernelRelease": "6.1.157-android14-11",
+      "buildDisplay": "CP2A.260705.006",
+      "exploitAsset": "exploits/panther-CP2A.260705.006.so",
+      "kmi": "android14-6.1"
+    },
+    {
+      "profileId": "husky-CP2A.260705.006",
+      "codename": "husky",
+      "kernelRelease": "6.1.157-android14-11",
+      "buildDisplay": "CP2A.260705.006",
+      "exploitAsset": "exploits/husky-CP2A.260705.006.so",
+      "kmi": "android14-6.1"
     }
   ]
 }

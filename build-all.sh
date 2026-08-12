@@ -55,15 +55,19 @@ else
 fi
 CC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$HOST_PLATFORM/bin/aarch64-linux-android35-clang"
 
-# ── Targets ─────────────────────────────────────────────────
-# Pixel 10 family (KMI android15-6.6) plus Pixel 9a (KMI android14-6.1).
-# tegu is a different kernel line, so it has its own struct offsets — see
-# the DIVERGENCE notes in its target.h.
+# ── Supported devices targets ─────────────────────────────────
+# Two kernel lines: the Pixel 10 family is android15-6.6 and builds from
+# src/, the rest are android14-6.1 and build from src/61/. The Makefile picks
+# the source set from its own sixone-targets list, so every name here must
+# match a directory under Root-My-Pixel-Payloads/src/targets/.
 TARGETS=(
   "blazer-CP2A.260705.006"    # Pixel 10 Pro
   "mustang-CP2A.260705.006"   # Pixel 10 Pro XL
   "rango-CP2A.260705.006"     # Pixel 10 Pro Fold
   "tegu-CP2A.260705.006"      # Pixel 9a
+  "lynx-CP2A.260705.006"      # Pixel 7a
+  "panther-CP2A.260705.006"   # Pixel 7
+  "husky-CP2A.260705.006"     # Pixel 8 Pro
 )
 
 echo ""

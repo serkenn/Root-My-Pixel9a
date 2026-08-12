@@ -94,4 +94,9 @@
     <string name="error_shizuku_required">Shizuku is required. Install Shizuku from Google Play and grant permissions to Root My Pixel.</string>
     <string name="error_boot_id">Cannot read boot ID</string>
     <string name="error_receipt">Cannot persist install receipt</string>
+
+    <!-- Uptime warning -->
+    <string name="uptime_error_title">Phone not rebooted</string>
+    <string name="uptime_error_message">The phone hasn\'t been rebooted recently. Rebooting your device before installation is recommended to ensure exploit stability.</string>
 </resources>
+

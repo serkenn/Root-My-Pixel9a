@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
+import android.os.SystemClock
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -38,11 +39,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val mutableState = MutableStateFlow(InstallUiState())
     private val mutableShizukuAvailable = MutableStateFlow(false)
     private val mutableReSukiSuInstalled = MutableStateFlow(false)
+    private val mutableUptimeExceeded = MutableStateFlow(false)
     private var refreshJob: Job? = null
 
     val state: StateFlow<InstallUiState> = mutableState.asStateFlow()
     val shizukuAvailable: StateFlow<Boolean> = mutableShizukuAvailable.asStateFlow()
     val reSukiSuInstalled: StateFlow<Boolean> = mutableReSukiSuInstalled.asStateFlow()
+    val uptimeExceeded: StateFlow<Boolean> = mutableUptimeExceeded.asStateFlow()
+
 
     private val shizukuPermissionHandler = Handler(Looper.getMainLooper())
     private val shizukuListener = Shizuku.OnBinderReceivedListener {
@@ -102,6 +106,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch(Dispatchers.IO) {
             mutableState.value = InstallUiState(phase = InstallPhase.Checking)
+            mutableUptimeExceeded.value = SystemClock.elapsedRealtime() > UPTIME_THRESHOLD_MS
 
             try {
                 mutableReSukiSuInstalled.value = app.packageManager
@@ -211,5 +216,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val SHIZUKU_PERMISSION_CODE = 101
+        private const val UPTIME_THRESHOLD_MS = 5 * 60 * 1000L // 5 minutes
     }
 }
