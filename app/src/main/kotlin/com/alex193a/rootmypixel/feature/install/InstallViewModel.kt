@@ -54,6 +54,22 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
     private var discoveryJob: Job? = null
     private var installJob: Job? = null
 
+    /**
+     * KASLR base leaked by the slide on this boot, if one has been.
+     *
+     * The slide is the stage that takes the kernel down: it arms a PI chain
+     * walk through a page it can only hope it reclaimed, and a miss can
+     * dereference whatever else is there. Measured on a Pixel 9a it panicked
+     * on its second attempt even on a device that had been idle for eight
+     * hours, so settling does not protect against it. The base it leaks is
+     * fixed for the lifetime of the boot, though, so once one attempt has it
+     * every later attempt can be handed it and skip the slide entirely —
+     * which takes that gamble out of the retries rather than repeating it.
+     * Held in memory on purpose: a panic reboots the phone and kills this
+     * process, which is exactly when the value stops being valid.
+     */
+    private var kaslrBaseThisBoot: String? = null
+
     val state: StateFlow<InstallUiState> = mutableState.asStateFlow()
     val targetCatalog: StateFlow<TargetCatalogUiState> = mutableTargetCatalog.asStateFlow()
 
@@ -280,8 +296,14 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             var lastFailure: String? = null
             for (attempt in 1..EXPLOIT_ATTEMPTS) {
                 waitForSettledSystem(handle, attempt)
-                appendLog("[*] exploit attempt $attempt/$EXPLOIT_ATTEMPTS")
-                val failure = runExploitOnce(handle, payloads, helper)
+                val known = kaslrBaseThisBoot
+                if (known != null) {
+                    appendLog("[*] attempt $attempt/$EXPLOIT_ATTEMPTS, skipping the slide (base $known)")
+                } else {
+                    appendLog("[*] exploit attempt $attempt/$EXPLOIT_ATTEMPTS")
+                }
+                val extraEnv = known?.let { "KASLR_BASE=$it" }
+                val failure = runExploitOnce(handle, payloads, helper, extraEnv)
                 if (failure == null) {
                     return
                 }
@@ -305,12 +327,14 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         handle: ShizukuServiceHandle,
         payloads: VerifiedPayloads,
         helper: File,
+        extraEnv: String?,
     ): String? {
         val logPrefix = mutableState.value.log
         handle.service.startExploit(
             payloads.exploit.readBytes(),
             helper.readBytes(),
             "/data/local/tmp/exploit.log",
+            extraEnv,
         )
 
         val startedAt = SystemClock.elapsedRealtime()
@@ -344,6 +368,14 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         val finalLog = handle.service.exec("cat /data/local/tmp/exploit.log 2>/dev/null || true")
         if (finalLog.isNotBlank()) {
             publishLog(logPrefix, finalLog)
+        }
+
+        // Keep any base this run leaked, whether or not it went on to get root.
+        SLIDE_BASE.find(finalLog)?.groupValues?.getOrNull(1)?.let { base ->
+            if (kaslrBaseThisBoot == null) {
+                kaslrBaseThisBoot = "0x$base"
+                appendLog("[*] remembered KASLR base 0x$base for this boot")
+            }
         }
 
         if (exitCode != 0) {
@@ -615,8 +647,10 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         private val LOG_POLL_INTERVAL = 250.milliseconds
 
         // How many times one press will race before giving up. A lost race
-        // leaves the device running, so a retry costs only time.
-        private const val EXPLOIT_ATTEMPTS = 3
+        // leaves the device running, so a retry costs only time — and once the
+        // first attempt has leaked a base, later ones skip the slide and cannot
+        // panic on it, so they are cheaper still.
+        private const val EXPLOIT_ATTEMPTS = 5
 
         // Settle thresholds, all measured on a Pixel 9a over one evening.
         // 40 minutes because every run started under ten minutes of uptime
@@ -633,5 +667,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         private const val SETTLE_BUDGET_MILLIS = 2_700_000L
         private val SETTLE_POLL_INTERVAL = 15.seconds
         private val FORK_SAMPLE_WINDOW = 3.seconds
+
+        private val SLIDE_BASE = Regex("slide-kaslr-ok[^\\n]*?base=([0-9a-f]+)")
     }
 }
