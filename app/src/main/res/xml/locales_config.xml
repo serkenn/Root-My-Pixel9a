@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Declares the languages this app ships translations for. On Android 13+ this
+  is what makes the app appear under Settings > System > Languages > App
+  languages, and what LocaleManager validates against. The in-app picker sets
+  the same per-app locale, so the two stay in sync.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="ja" />
+</locale-config>

@@ -1,6 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Root My Pixel</string>
+    <string name="app_subtitle">Inspired by Root My Galaxy</string>
+
+    <!-- Language picker. The language names are deliberately NOT translated:
+         each one is written in its own language so it is readable to someone
+         who cannot currently read the UI. -->
+    <string name="language_title">Language</string>
+    <string name="language_system">System default</string>
+    <string name="language_en" translatable="false">English</string>
+    <string name="language_ja" translatable="false">日本語</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_export_log">Export log</string>
+    <string name="cd_refresh">Refresh</string>
+    <string name="cd_language">Change language</string>
+
+    <!-- ReSukiSU Manager prompt -->
+    <string name="resuki_missing_title">ReSukiSU Manager not installed</string>
+    <string name="resuki_missing_body">You need the ReSukiSU Manager app to manage root permissions.</string>
+    <string name="resuki_missing_action">Install ReSukiSU Manager</string>
+
+    <!-- Credits -->
+    <string name="credits_developed_by">DEVELOPED BY</string>
 
     <!-- Main screen -->
     <string name="status_checking">Checking device compatibility…</string>
@@ -40,6 +62,7 @@
     <!-- Status messages -->
     <string name="status_downloading">Extracting payloads from APK…</string>
     <string name="status_exploit">Running kernel exploit…</string>
+    <string name="status_settling">Waiting for the device to go quiet…</string>
     <string name="status_loading_ksu">Loading ReSukiSU module…</string>
     <string name="status_install_failed">Installation failed</string>
 
@@ -72,4 +95,11 @@
     <string name="error_shizuku_required">Shizuku is required. Install Shizuku from Google Play and grant permissions to Root My Pixel.</string>
     <string name="error_boot_id">Cannot read boot ID</string>
     <string name="error_receipt">Cannot persist install receipt</string>
+
+    <!-- Uptime warning -->
+    <string name="uptime_error_title">Expect a reboot</string>
+    <string name="uptime_error_message">Winning this race is a matter of luck, and losing it can panic the kernel and reboot the phone. That is expected and harmless — nothing is written until it succeeds. If it reboots, just try again.</string>
+    <string name="shizuku_status_active">Shizuku shell access active</string>
+    <string name="shizuku_status_inactive">Shizuku not connected — exploit may fail (needs ADB shell)</string>
 </resources>
+

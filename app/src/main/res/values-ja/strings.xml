@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Japanese translations.
+
+  Terminology is kept deliberately literal where the term is one the user will
+  also see in logs, on GitHub, or in ReSukiSU itself: ReSukiSU, Shizuku,
+  SELinux, KMI, root, exploit and payload stay in their original form rather
+  than being rendered into Japanese, because a user who has to search for an
+  error needs the searchable word. Prose around them is translated normally.
+-->
+<resources>
+    <!-- app_name is intentionally not translated: it is the launcher label and
+         the project's own name. -->
+    <string name="app_subtitle">Root My Galaxy に着想を得ています</string>
+
+    <string name="language_title">言語</string>
+    <string name="language_system">システムの設定に従う</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_export_log">ログを書き出す</string>
+    <string name="cd_refresh">再確認</string>
+    <string name="cd_language">言語を変更</string>
+
+    <!-- ReSukiSU Manager prompt -->
+    <string name="resuki_missing_title">ReSukiSU Manager が未インストールです</string>
+    <string name="resuki_missing_body">root 権限の許可を管理するには ReSukiSU Manager アプリが必要です。</string>
+    <string name="resuki_missing_action">ReSukiSU Manager をインストール</string>
+
+    <!-- Credits -->
+    <string name="credits_developed_by">開発</string>
+
+    <!-- Main screen -->
+    <string name="status_checking">端末の対応状況を確認しています…</string>
+    <string name="status_not_installed">対応端末です — インストールできます</string>
+    <string name="status_support_failed">未対応の端末です</string>
+    <string name="status_ksu_active">ReSukiSU が有効です</string>
+
+    <!-- Actions -->
+    <string name="action_install">ReSukiSU をインストール</string>
+    <string name="action_reinstall">ReSukiSU を再インストール</string>
+    <string name="action_install_permissive_only">SELinux Permissive のみ</string>
+    <string name="action_retry">再試行</string>
+    <string name="action_close">閉じる</string>
+    <string name="action_done">完了</string>
+    <string name="action_soft_reboot">ソフト再起動（ユーザー空間）</string>
+    <string name="action_export_log">exploit.log を書き出す</string>
+    <string name="action_copy_log">ログをコピー</string>
+    <string name="copied_to_clipboard">ログをクリップボードにコピーしました</string>
+    <string name="install_mode_full">フルインストール（ReSukiSU）</string>
+    <string name="install_mode_permissive">Permissive のみ</string>
+
+    <!-- Install screen -->
+    <string name="install_title">ReSukiSU をインストール</string>
+    <string name="install_keep_open">インストール中はアプリを開いたままにしてください</string>
+    <string name="install_live_progress">実行中のログ</string>
+    <string name="install_preparing">準備しています…</string>
+
+    <!-- Phases -->
+    <string name="phase_checking">対応情報を確認しています…</string>
+    <string name="phase_ready">インストールの準備ができました</string>
+    <string name="phase_downloading">ペイロードを展開しています…</string>
+    <string name="phase_exploiting">exploit を実行しています…</string>
+    <string name="phase_loading_ksu">ReSukiSU モジュールを読み込んでいます…</string>
+    <string name="phase_installed">インストールが完了しました</string>
+    <string name="phase_failed">インストールに失敗しました</string>
+
+    <!-- Status messages -->
+    <string name="status_downloading">APK からペイロードを展開しています…</string>
+    <string name="status_exploit">カーネル exploit を実行しています…</string>
+    <string name="status_loading_ksu">ReSukiSU モジュールを読み込んでいます…</string>
+    <string name="status_install_failed">インストールに失敗しました</string>
+
+    <!-- Steps -->
+    <string name="step_support_title">対応確認</string>
+    <string name="step_support_detail">端末の対応状況を確認します</string>
+    <string name="step_download_title">ペイロード展開</string>
+    <string name="step_download_detail">同梱の exploit と ReSukiSU のバイナリを展開します</string>
+    <string name="step_exploit_title">exploit 実行</string>
+    <string name="step_exploit_detail">一時的な root 権限を取得します</string>
+    <string name="step_ksu_title">ReSukiSU 読み込み</string>
+    <string name="step_ksu_detail">ReSukiSU カーネルモジュールを導入します</string>
+
+    <!-- Log messages -->
+    <string name="log_profile">一致したプロファイル: %1$s</string>
+    <string name="log_download_verified">ペイロードの展開が完了しました</string>
+    <string name="log_bootstrap_root">root の初期化が完了しました</string>
+    <string name="log_ksu_staged">ReSukiSU のバイナリを配置しました</string>
+    <string name="log_ksu_control_verified">ReSukiSU の制御インターフェースを確認しました</string>
+    <string name="log_install_complete">インストール完了 — ReSukiSU が有効です</string>
+
+    <!-- Errors -->
+    <string name="error_helper_unavailable">ネイティブヘルパーを利用できません</string>
+    <string name="error_exploit_stalled">exploit が停止しました — 進行がありません</string>
+    <string name="error_exploit_timeout">exploit がタイムアウトしました</string>
+    <string name="error_payload_exit">exploit が終了コード %1$d で終了しました%2$s</string>
+    <string name="error_success_marker">exploit が成功を報告しませんでした</string>
+    <string name="error_ksu_stage">ksud の配置に失敗しました: %1$s</string>
+    <string name="error_ksu_verify">ReSukiSU のローダーが失敗しました (%1$d): %2$s</string>
+    <string name="error_shizuku_required">Shizuku が必要です。Google Play から Shizuku をインストールし、Root My Pixel に権限を許可してください。</string>
+    <string name="error_boot_id">boot ID を読み取れません</string>
+    <string name="error_receipt">インストール記録を保存できません</string>
+    <string name="status_settling">端末が静かになるのを待っています…</string>
+    <string name="uptime_error_title">再起動することがあります</string>
+    <string name="uptime_error_message">このエクスプロイトは運任せの競争で、負けるとカーネルパニックで端末が再起動することがあります。想定内で害はありません（成功するまで何も書き換えません）。再起動したら、もう一度試してください。</string>
+    <string name="shizuku_status_active">Shizuku のシェルアクセスが有効です</string>
+    <string name="shizuku_status_inactive">Shizuku に接続されていません — エクスプロイトが失敗する可能性があります（ADB シェルが必要）</string>
+</resources>

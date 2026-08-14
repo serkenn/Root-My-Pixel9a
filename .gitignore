@@ -15,3 +15,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Factory images are multi-GB downloads used only for offset extraction
+/.factory-images

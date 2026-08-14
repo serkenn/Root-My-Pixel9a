@@ -2,6 +2,8 @@
 
 **Root My Pixel** is an Android application designed to automate root access on **Google Pixel** devices leveraging the **NebuSec IonStack** exploit (CVE-2026-43499) and integrating **ReSukiSU / KernelSU**.
 
+日本語のマニュアルは [README-ja.md](README-ja.md) を参照してください。
+
 ---
 
 ## How the Application Works
@@ -42,6 +44,32 @@ Root My Pixel lets you *temporarily* gain root access with ReSukiSU in just one 
 | **Pixel 10 Pro XL**   | `mustang`  | `CP2A.260705.006` | `android15-6.6` | ✅      |
 | **Pixel 10 Pro Fold** | `rango`    | `CP2A.260705.006` | `android15-6.6` | ✅      |
 | **Pixel 10a**         | `stallion` | `CP2A.260705.006` | `android15-6.6` | ⏳      |
+| **Pixel 8 Pro**       | `husky`    | `CP2A.260705.006` | `android14-6.1` | ✅      |
+| **Pixel 7**           | `panther`  | `CP2A.260705.006` | `android14-6.1` | ✅      |
+| **Pixel 7a**          | `lynx`     | `CP2A.260705.006` | `android14-6.1` | ✅      |
+| **Pixel 9a**          | `tegu`     | `CP2A.260705.006` | `android14-6.1` | ⏳      |
+
+The Pixel 10 family is `android15-6.6` and builds from `src/`; every other
+supported device is `android14-6.1` and builds from `src/61/`. Struct layouts
+are not shared across those kernel lines, so nothing is inherited between
+them — the Makefile keeps the two source sets apart on purpose.
+
+`tegu` is the one target here that has not been run to completion. On a
+physical Pixel 9a the KernelSnitch `mm_struct` leak, the page reclaim, the
+`pselect` waiter corruption and the slide route all succeed and the run
+reports `slide-kaslr-ok` with a recovered kernel base; the main route past
+that point is still unverified on this device. Two things had to be measured
+on the device rather than derived, and both apply to every `android14-6.1`
+target, not just this one:
+
+- `MM_STRUCT_SZ` is the SLUB object size, `0x400`, not the `0x3c0` that BTF
+  reports for `sizeof(struct mm_struct)` — `proc_caches_init()` adds
+  `cpumask_size()` before `SLAB_HWCACHE_ALIGN` rounds up. `/proc/slabinfo` is
+  world-readable on these builds, so read it off the device.
+- `prepare_kernel_page()` has to unfreeze the target slab off the per-CPU
+  partial list before the reclaim sends. `CONFIG_SLUB_CPU_PARTIAL` is set, and
+  a slab that empties while still frozen never reaches the page allocator, so
+  the reclaim cannot win the page at all.
 
 ---
 

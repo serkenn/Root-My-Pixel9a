@@ -1,7 +1,10 @@
 package com.alex193a.rootmypixel.feature.main
 
+import android.app.LocaleManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.LocaleList
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,7 +27,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.OpenInBrowser
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Refresh
@@ -35,6 +40,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,6 +54,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -78,12 +88,14 @@ class MainActivity : ComponentActivity() {
             val state by installViewModel.state.collectAsStateWithLifecycle()
             val shizukuAvailable by installViewModel.shizukuAvailable.collectAsStateWithLifecycle()
             val reSukiSuInstalled by installViewModel.reSukiSuInstalled.collectAsStateWithLifecycle()
+            val deviceNotSettled by installViewModel.deviceNotSettled.collectAsStateWithLifecycle()
 
             RootMyPixelTheme {
                 MainScreen(
                     state = state,
                     shizukuAvailable = shizukuAvailable,
                     reSukiSuInstalled = reSukiSuInstalled,
+                    deviceNotSettled = deviceNotSettled,
                     onRefresh = { installViewModel.refresh() },
                     onInstall = { installViewModel.install() },
                     onExportLog = { installViewModel.exportLog() },
@@ -98,12 +110,71 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Per-app language picker.
+ *
+ * minSdk is 33, so this uses the platform LocaleManager directly rather than
+ * pulling in AppCompat: the locale is stored by the system, survives reinstalls
+ * of the process, and is the same setting the user gets under
+ * Settings > System > Languages > App languages. Setting it recreates the
+ * activity, so the UI redraws in the new language with no extra work here.
+ *
+ * An empty LocaleList means "follow the system", which is not the same as
+ * pinning the system's current language — it keeps tracking later changes.
+ */
+private val LANGUAGE_TAGS = listOf(null, "en", "ja")
+
+@Composable
+private fun LanguageMenu() {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+
+    val localeManager = remember(context) {
+        context.getSystemService(Context.LOCALE_SERVICE) as LocaleManager
+    }
+    // The system may hand back a region-qualified tag ("ja-JP") even though the
+    // app only declares "ja", so compare on the language subtag alone.
+    var current by remember {
+        mutableStateOf(localeManager.applicationLocales.takeUnless { it.isEmpty }?.get(0)?.language)
+    }
+
+    IconButton(onClick = { expanded = true }) {
+        Icon(Icons.Rounded.Language, contentDescription = stringResource(R.string.cd_language))
+    }
+
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        LANGUAGE_TAGS.forEach { tag ->
+            val label = when (tag) {
+                null -> stringResource(R.string.language_system)
+                "ja" -> stringResource(R.string.language_ja)
+                else -> stringResource(R.string.language_en)
+            }
+            DropdownMenuItem(
+                text = { Text(label) },
+                leadingIcon = {
+                    if (tag == current) {
+                        Icon(Icons.Rounded.Check, contentDescription = null)
+                    }
+                },
+                onClick = {
+                    expanded = false
+                    current = tag
+                    localeManager.applicationLocales =
+                        if (tag == null) LocaleList.getEmptyLocaleList()
+                        else LocaleList.forLanguageTags(tag)
+                },
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScreen(
     state: InstallUiState,
     shizukuAvailable: Boolean,
     reSukiSuInstalled: Boolean,
+    deviceNotSettled: Boolean,
     onRefresh: () -> Unit,
     onInstall: () -> Unit,
     onExportLog: () -> Unit,
@@ -123,7 +194,7 @@ private fun MainScreen(
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
-                            text = "Inspired by Root My Galaxy",
+                            text = stringResource(R.string.app_subtitle),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 textDecoration = TextDecoration.Underline,
                             ),
@@ -138,14 +209,21 @@ private fun MainScreen(
                 actions = {
                     if (state.log.isNotBlank()) {
                         IconButton(onClick = onExportLog) {
-                            Icon(Icons.Rounded.Share, contentDescription = "Export log")
+                            Icon(
+                                Icons.Rounded.Share,
+                                contentDescription = stringResource(R.string.cd_export_log),
+                            )
                         }
                     }
+                    LanguageMenu()
                     IconButton(onClick = onRefresh, enabled = !state.busy) {
                         if (state.busy) {
                             CircularProgressIndicator(modifier = Modifier.padding(8.dp))
                         } else {
-                            Icon(Icons.Rounded.Refresh, contentDescription = "Refresh")
+                            Icon(
+                                Icons.Rounded.Refresh,
+                                contentDescription = stringResource(R.string.cd_refresh),
+                            )
                         }
                     }
                 },
@@ -167,6 +245,13 @@ private fun MainScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             Spacer(modifier = Modifier.height(12.dp))
+
+            // Uptime status
+            UptimeErrorCard(exceeded = deviceNotSettled)
+
+            if (deviceNotSettled) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // Shizuku status
             ShizukuStatusCard(available = shizukuAvailable)
@@ -280,6 +365,44 @@ private fun MainScreen(
 }
 
 @Composable
+private fun UptimeErrorCard(exceeded: Boolean) {
+    if (!exceeded) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.Warning,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.uptime_error_title),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.uptime_error_message),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ShizukuStatusCard(available: Boolean) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -307,7 +430,10 @@ private fun ShizukuStatusCard(available: Boolean) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = if (available) "Shizuku shell access active" else "Shizuku not connected — exploit may fail (needs ADB shell)",
+                text = stringResource(
+                    if (available) R.string.shizuku_status_active
+                    else R.string.shizuku_status_inactive
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 fontSize = 12.sp,
             )
@@ -338,14 +464,14 @@ private fun ReSukiSuManagerCard(installed: Boolean, context: android.content.Con
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "ReSukiSU Manager not installed",
+                    text = stringResource(R.string.resuki_missing_title),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "You need the ReSukiSU Manager app to manage root permissions.",
+                text = stringResource(R.string.resuki_missing_body),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -366,7 +492,7 @@ private fun ReSukiSuManagerCard(installed: Boolean, context: android.content.Con
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Install ReSukiSU Manager")
+                Text(stringResource(R.string.resuki_missing_action))
             }
         }
     }
@@ -410,7 +536,7 @@ private fun DeveloperSocialCard(modifier: Modifier = Modifier) {
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "DEVELOPED BY",
+                        text = stringResource(R.string.credits_developed_by),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         letterSpacing = 0.5.sp,
