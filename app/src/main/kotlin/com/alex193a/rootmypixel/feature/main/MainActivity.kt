@@ -430,7 +430,10 @@ private fun ShizukuStatusCard(available: Boolean) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = if (available) "Shizuku shell access active" else "Shizuku not connected — exploit may fail (needs ADB shell)",
+                text = stringResource(
+                    if (available) R.string.shizuku_status_active
+                    else R.string.shizuku_status_inactive
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 fontSize = 12.sp,
             )

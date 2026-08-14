@@ -98,5 +98,7 @@
     <!-- Uptime warning -->
     <string name="uptime_error_title">Phone not rebooted</string>
     <string name="uptime_error_message">The phone hasn\'t been rebooted recently. Rebooting your device before installation is recommended to ensure exploit stability.</string>
+    <string name="shizuku_status_active">Shizuku shell access active</string>
+    <string name="shizuku_status_inactive">Shizuku not connected — exploit may fail (needs ADB shell)</string>
 </resources>
 
