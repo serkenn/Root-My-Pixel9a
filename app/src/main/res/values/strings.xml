@@ -62,6 +62,7 @@
     <!-- Status messages -->
     <string name="status_downloading">Extracting payloads from APK…</string>
     <string name="status_exploit">Running kernel exploit…</string>
+    <string name="status_settling">Waiting for the device to go quiet…</string>
     <string name="status_loading_ksu">Loading ReSukiSU module…</string>
     <string name="status_install_failed">Installation failed</string>
 
@@ -96,8 +97,8 @@
     <string name="error_receipt">Cannot persist install receipt</string>
 
     <!-- Uptime warning -->
-    <string name="uptime_error_title">Phone not rebooted</string>
-    <string name="uptime_error_message">The phone hasn\'t been rebooted recently. Rebooting your device before installation is recommended to ensure exploit stability.</string>
+    <string name="uptime_error_title">Phone just booted</string>
+    <string name="uptime_error_message">The exploit races the kernel for memory a just-booted phone is still churning through. Leaving the device idle for about 40 minutes before installing makes it far more likely to succeed — and far less likely to crash the kernel. Do not reboot first.</string>
     <string name="shizuku_status_active">Shizuku shell access active</string>
     <string name="shizuku_status_inactive">Shizuku not connected — exploit may fail (needs ADB shell)</string>
 </resources>

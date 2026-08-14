@@ -32,6 +32,7 @@ import org.koin.java.KoinJavaComponent.get
 import rikka.shizuku.Shizuku
 import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 data class TargetCatalogUiState(
     val loading: Boolean = false,
@@ -270,52 +271,173 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             ?: throw IllegalStateException("Failed to bind Shizuku UserService")
 
         try {
-            val logPrefix = mutableState.value.log
-            handle.service.startExploit(
-                payloads.exploit.readBytes(),
-                helper.readBytes(),
-                "/data/local/tmp/exploit.log",
+            // The exploit races the kernel for a page, and losing is the normal
+            // outcome on a busy device rather than a bug. One press used to mean
+            // one race: lose it and the user got a failure whose only answer was
+            // to press again, which on this hardware often meant pressing at the
+            // worst possible moment. Do the retrying here instead, and settle the
+            // device first, so a press means "get root" rather than "roll once".
+            var lastFailure: String? = null
+            for (attempt in 1..EXPLOIT_ATTEMPTS) {
+                waitForSettledSystem(handle, attempt)
+                appendLog("[*] exploit attempt $attempt/$EXPLOIT_ATTEMPTS")
+                val failure = runExploitOnce(handle, payloads, helper)
+                if (failure == null) {
+                    return
+                }
+                lastFailure = failure
+                appendLog("[-] attempt $attempt did not get root: $failure")
+            }
+            throw IllegalStateException(
+                lastFailure ?: app.getString(R.string.error_success_marker)
             )
-
-            val startedAt = SystemClock.elapsedRealtime()
-            var lastProgressAt = startedAt
-            var lastRawLog = ""
-
-            while (handle.service.isRunning) {
-                val remoteLog = handle.service.getLog()
-                val fileLog = handle.service.exec("cat /data/local/tmp/exploit.log 2>/dev/null || true")
-                val currentLog = if (fileLog.length > remoteLog.length) fileLog else remoteLog
-
-                if (currentLog != lastRawLog) {
-                    publishLog(logPrefix, currentLog)
-                    lastRawLog = currentLog
-                    lastProgressAt = SystemClock.elapsedRealtime()
-                }
-                val now = SystemClock.elapsedRealtime()
-                require(now - lastProgressAt < EXPLOIT_STALL_MILLIS) {
-                    app.getString(R.string.error_exploit_stalled)
-                }
-                require(now - startedAt < EXPLOIT_TOTAL_MILLIS) {
-                    app.getString(R.string.error_exploit_timeout)
-                }
-                delay(LOG_POLL_INTERVAL)
-            }
-
-            val exitCode = handle.service.waitFor()
-            val finalLog = handle.service.exec("cat /data/local/tmp/exploit.log 2>/dev/null || true")
-            if (finalLog.isNotBlank()) {
-                publishLog(logPrefix, finalLog)
-            }
-
-            require(exitCode == 0) {
-                app.getString(R.string.error_payload_exit, exitCode, "")
-            }
-            require(finalLog.contains("done=1") && finalLog.contains("root=1")) {
-                app.getString(R.string.error_success_marker)
-            }
         } finally {
             unbindExploitService(handle)
         }
+    }
+
+    /**
+     * Runs the payload once. Returns null on success, or a description of why
+     * it did not get root — a lost race is a return value here, not an
+     * exception, because it is worth retrying and a stall or a bad exit is not.
+     */
+    private suspend fun runExploitOnce(
+        handle: ShizukuServiceHandle,
+        payloads: VerifiedPayloads,
+        helper: File,
+    ): String? {
+        val logPrefix = mutableState.value.log
+        handle.service.startExploit(
+            payloads.exploit.readBytes(),
+            helper.readBytes(),
+            "/data/local/tmp/exploit.log",
+        )
+
+        val startedAt = SystemClock.elapsedRealtime()
+        var lastProgressAt = startedAt
+        var lastRawLog = ""
+
+        while (handle.service.isRunning) {
+            val remoteLog = handle.service.getLog()
+            val fileLog = handle.service.exec("cat /data/local/tmp/exploit.log 2>/dev/null || true")
+            val currentLog = if (fileLog.length > remoteLog.length) fileLog else remoteLog
+
+            if (currentLog != lastRawLog) {
+                publishLog(logPrefix, currentLog)
+                lastRawLog = currentLog
+                lastProgressAt = SystemClock.elapsedRealtime()
+            }
+            val now = SystemClock.elapsedRealtime()
+            // A stall or an overall timeout still throws: those mean something
+            // is wrong rather than that a race was lost, and retrying them just
+            // burns the clock.
+            require(now - lastProgressAt < EXPLOIT_STALL_MILLIS) {
+                app.getString(R.string.error_exploit_stalled)
+            }
+            require(now - startedAt < EXPLOIT_TOTAL_MILLIS) {
+                app.getString(R.string.error_exploit_timeout)
+            }
+            delay(LOG_POLL_INTERVAL)
+        }
+
+        val exitCode = handle.service.waitFor()
+        val finalLog = handle.service.exec("cat /data/local/tmp/exploit.log 2>/dev/null || true")
+        if (finalLog.isNotBlank()) {
+            publishLog(logPrefix, finalLog)
+        }
+
+        if (exitCode != 0) {
+            return app.getString(R.string.error_payload_exit, exitCode, "")
+        }
+        if (!finalLog.contains("done=1") || !finalLog.contains("root=1")) {
+            return app.getString(R.string.error_success_marker)
+        }
+        return null
+    }
+
+    /**
+     * Blocks until the device is quiet enough to be worth racing, or until the
+     * budget runs out.
+     *
+     * The exploit reclaims a slab page that the kernel has just freed, so it is
+     * competing with every other process that allocates one. Measured on a
+     * Pixel 9a across a single evening, that competition — not anything in the
+     * exploit — decided the outcome: runs started within ten minutes of boot
+     * lost every time and took the kernel down with them more often than not,
+     * while runs on a device that had been idle for forty minutes took root on
+     * the first page. Waiting is therefore not politeness, it is the single
+     * biggest lever available, and it is one the app can pull by itself instead
+     * of asking the user to be patient at exactly the wrong moment.
+     */
+    private suspend fun waitForSettledSystem(handle: ShizukuServiceHandle, attempt: Int) {
+        val deadline = SystemClock.elapsedRealtime() + SETTLE_BUDGET_MILLIS
+        var announced = false
+
+        while (SystemClock.elapsedRealtime() < deadline) {
+            val uptime = handle.service
+                .exec("cut -d. -f1 /proc/uptime 2>/dev/null || echo 0")
+                .trim().toLongOrNull() ?: 0L
+            val forkRate = sampleForkRate(handle)
+            val running = handle.service
+                .exec("grep '^procs_running' /proc/stat 2>/dev/null || true")
+                .trim().split(Regex("\\s+")).getOrNull(1)?.toIntOrNull() ?: 0
+            val state = "uptime ${uptime}s, ${forkRate} forks/s, ${running} running"
+
+            // Both conditions, because neither is sufficient on its own. A run
+            // started at 530s of uptime on a device measuring 2% CPU, 1 fork/s
+            // and 2 runnable — quiet by any instantaneous measure — still
+            // panicked the kernel. Whatever the young-boot penalty is, it is
+            // not visible in current activity: most likely the per-CPU partial
+            // lists are still full of the mm_structs that boot churned through,
+            // so the page the reclaim wants goes back to the cache instead of
+            // to the allocator. Time is the only handle on that, and idleness
+            // is the only handle on live competition.
+            if (uptime >= SETTLE_MIN_UPTIME_SECONDS &&
+                forkRate <= SETTLE_MAX_FORKS_PER_SEC &&
+                running <= SETTLE_MAX_RUNNING
+            ) {
+                if (announced) {
+                    appendLog("[*] device settled ($state)")
+                }
+                return
+            }
+
+            if (!announced) {
+                appendLog("[*] waiting for the device to settle before attempt $attempt ($state)")
+                announced = true
+            }
+            setPhase(InstallPhase.Exploiting, app.getString(R.string.status_settling))
+            delay(SETTLE_POLL_INTERVAL)
+        }
+        appendLog("[*] settle budget spent, racing anyway")
+    }
+
+    /**
+     * Processes created per second, from the `processes` counter in /proc/stat.
+     *
+     * This is the number that matters, and it took a measurement to see why.
+     * The race is for an `mm_struct` slab page, and an `mm_struct` is allocated
+     * when a process is created — so the competition is fork traffic, not CPU
+     * load. On a device sitting at 2% CPU the fork rate was 1/s and the system
+     * was genuinely out of the way; CPU percentage alone would have said the
+     * same thing about a device busy spawning short-lived processes, which is
+     * the case that actually loses the race.
+     *
+     * Load average is worse still: it is a decaying one-minute mean starting
+     * from zero, so just after boot — the busiest moment and the least winnable
+     * — it reads low and would wave the run straight through.
+     */
+    private suspend fun sampleForkRate(handle: ShizukuServiceHandle): Int {
+        fun read(): Long? = handle.service
+            .exec("grep '^processes' /proc/stat 2>/dev/null || true")
+            .trim().split(Regex("\\s+")).getOrNull(1)?.toLongOrNull()
+
+        val first = read() ?: return 0
+        delay(FORK_SAMPLE_WINDOW)
+        val second = read() ?: return 0
+
+        val seconds = FORK_SAMPLE_WINDOW.inWholeSeconds.coerceAtLeast(1)
+        return ((second - first) / seconds).toInt().coerceAtLeast(0)
     }
 
     // Shizuku helpers
@@ -491,5 +613,25 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         private const val EXPLOIT_TOTAL_MILLIS = 1_800_000L
         private const val MAX_LOG_CHARS = 5 * 1024 * 1024
         private val LOG_POLL_INTERVAL = 250.milliseconds
+
+        // How many times one press will race before giving up. A lost race
+        // leaves the device running, so a retry costs only time.
+        private const val EXPLOIT_ATTEMPTS = 3
+
+        // Settle thresholds, all measured on a Pixel 9a over one evening.
+        // 40 minutes because every run started under ten minutes of uptime
+        // failed — five of six by panicking — while runs at 40 minutes and
+        // beyond took root, twice on the first page.
+        private const val SETTLE_MIN_UPTIME_SECONDS = 2_400L
+        // An idle device sits around 1 fork/s with 2 runnable; boot and heavy
+        // app use are an order of magnitude above that.
+        private const val SETTLE_MAX_FORKS_PER_SEC = 5
+        private const val SETTLE_MAX_RUNNING = 4
+
+        // Cap the wait so the UI cannot hang forever on a device that never
+        // goes quiet; past the cap it races anyway rather than refusing.
+        private const val SETTLE_BUDGET_MILLIS = 2_700_000L
+        private val SETTLE_POLL_INTERVAL = 15.seconds
+        private val FORK_SAMPLE_WINDOW = 3.seconds
     }
 }

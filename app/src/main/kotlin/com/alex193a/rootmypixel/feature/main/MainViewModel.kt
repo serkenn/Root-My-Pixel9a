@@ -39,13 +39,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val mutableState = MutableStateFlow(InstallUiState())
     private val mutableShizukuAvailable = MutableStateFlow(false)
     private val mutableReSukiSuInstalled = MutableStateFlow(false)
-    private val mutableUptimeExceeded = MutableStateFlow(false)
+    private val mutableDeviceNotSettled = MutableStateFlow(false)
     private var refreshJob: Job? = null
 
     val state: StateFlow<InstallUiState> = mutableState.asStateFlow()
     val shizukuAvailable: StateFlow<Boolean> = mutableShizukuAvailable.asStateFlow()
     val reSukiSuInstalled: StateFlow<Boolean> = mutableReSukiSuInstalled.asStateFlow()
-    val uptimeExceeded: StateFlow<Boolean> = mutableUptimeExceeded.asStateFlow()
+    val deviceNotSettled: StateFlow<Boolean> = mutableDeviceNotSettled.asStateFlow()
 
 
     private val shizukuPermissionHandler = Handler(Looper.getMainLooper())
@@ -106,7 +106,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch(Dispatchers.IO) {
             mutableState.value = InstallUiState(phase = InstallPhase.Checking)
-            mutableUptimeExceeded.value = SystemClock.elapsedRealtime() > UPTIME_THRESHOLD_MS
+            // Inverted on purpose. This used to warn once the phone had been up
+            // for five minutes and recommend a reboot, which is backwards: the
+            // exploit races the kernel for a freshly freed slab page, and a
+            // just-booted phone is the worst possible moment for that. Measured
+            // on a Pixel 9a, every run started under ten minutes of uptime failed
+            // and most panicked the kernel, while runs after forty minutes took
+            // root. Warn about a *young* boot instead.
+            mutableDeviceNotSettled.value =
+                SystemClock.elapsedRealtime() < SETTLED_UPTIME_MS
 
             try {
                 mutableReSukiSuInstalled.value = app.packageManager
@@ -216,6 +224,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val SHIZUKU_PERMISSION_CODE = 101
-        private const val UPTIME_THRESHOLD_MS = 5 * 60 * 1000L // 5 minutes
+        private const val SETTLED_UPTIME_MS = 40 * 60 * 1000L // 40 minutes
     }
 }
