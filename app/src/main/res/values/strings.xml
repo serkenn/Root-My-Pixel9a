@@ -97,8 +97,8 @@
     <string name="error_receipt">Cannot persist install receipt</string>
 
     <!-- Uptime warning -->
-    <string name="uptime_error_title">Phone just booted</string>
-    <string name="uptime_error_message">The exploit races the kernel for memory a just-booted phone is still churning through. Leaving the device idle for about 40 minutes before installing makes it far more likely to succeed — and far less likely to crash the kernel. Do not reboot first.</string>
+    <string name="uptime_error_title">Expect a reboot</string>
+    <string name="uptime_error_message">Winning this race is a matter of luck, and losing it can panic the kernel and reboot the phone. That is expected and harmless — nothing is written until it succeeds. If it reboots, just try again.</string>
     <string name="shizuku_status_active">Shizuku shell access active</string>
     <string name="shizuku_status_inactive">Shizuku not connected — exploit may fail (needs ADB shell)</string>
 </resources>

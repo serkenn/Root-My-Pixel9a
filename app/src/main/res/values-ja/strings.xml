@@ -100,8 +100,8 @@
     <string name="error_boot_id">boot ID を読み取れません</string>
     <string name="error_receipt">インストール記録を保存できません</string>
     <string name="status_settling">端末が静かになるのを待っています…</string>
-    <string name="uptime_error_title">端末が起動したばかりです</string>
-    <string name="uptime_error_message">このエクスプロイトは、起動直後の端末がまだ使い回している最中のメモリをカーネルと奪い合います。インストール前に 40 分ほど放置しておくと成功率が大きく上がり、カーネルを巻き添えに落とす危険も下がります。先に再起動しないでください。</string>
+    <string name="uptime_error_title">再起動することがあります</string>
+    <string name="uptime_error_message">このエクスプロイトは運任せの競争で、負けるとカーネルパニックで端末が再起動することがあります。想定内で害はありません（成功するまで何も書き換えません）。再起動したら、もう一度試してください。</string>
     <string name="shizuku_status_active">Shizuku のシェルアクセスが有効です</string>
     <string name="shizuku_status_inactive">Shizuku に接続されていません — エクスプロイトが失敗する可能性があります（ADB シェルが必要）</string>
 </resources>
